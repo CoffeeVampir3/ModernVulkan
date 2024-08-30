@@ -13,6 +13,8 @@ import RenderPass;
 import Commands;
 import Presentation;
 import Logging;
+import Descriptors;
+import Buffers;
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -20,7 +22,8 @@ const uint32_t HEIGHT = 600;
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char *> requiredDeviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
 
 using deferred = std::function<void()>;
 
@@ -34,7 +37,13 @@ int main() {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
   auto window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+  DEFER(
+    glfwDestroyWindow(window); 
+    glfwTerminate();
+    Logging::info("GLFW destroyed");
+  );
 
+  //Callback for when the window is resized and we need to rebuild the swapchains and framebuffers for the new extents.
   bool framebufferResized = false;
   glfwSetWindowUserPointer(window, &framebufferResized);
   glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
@@ -43,19 +52,12 @@ int main() {
     Logging::info("GLFW window was resized.");
   });
 
-  DEFER(
-    glfwDestroyWindow(window); 
-    glfwTerminate();
-    Logging::info("GLFW destroyed");
-  );
-
   Logging::info("Vulkan initialization.");
   auto instance = Vulkan::createInstance();
   DEFER(
     vkDestroyInstance(instance, nullptr);
     Logging::info("Vulkan destroyed.");
   );
-
   if (instance == VK_NULL_HANDLE) {
     Logging::failure("Unable to create a vulkan instance.");
     return -1;
@@ -136,19 +138,34 @@ int main() {
       }
   );
 
+  std::vector<Descriptors::Vertex> vertices = {
+    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+  };
+
+  auto [stagingBuffer, stagingBufferMemory, vertexBuffer, vertexBufferMemory, bufferSize, destroyVertexBuffers] = 
+    Vulkan::createVertexBuffer(physicalDevice, logicalDevice, vertices);
+
+  DEFER(destroyVertexBuffers(logicalDevice));
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
+    for (auto& vertex : vertices) {
+        vertex.pos[0] *= 1.001;
+        vertex.pos[1] *= 1.007;
+    }
     glfwPollEvents();
     bool frameSuccessful = Vulkan::drawFrame(
       physicalDevice, 
       logicalDevice, 
       graphicsPipeline, 
       graphicsQueue,
-      swapChain, 
+      swapChain,
       renderPass, 
       commandBuffers[currentFrame],
-      synchronizers[currentFrame], 
+      synchronizers[currentFrame],
+      vertexBuffer,
       framebufferResized
     );
 
@@ -157,6 +174,13 @@ int main() {
       return -1;
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    vkDeviceWaitIdle(logicalDevice);
+    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, stagingBuffer, vertexBuffer, bufferSize);
+
+    void* data;
+    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    std::memcpy(data, vertices.data(), (size_t) bufferSize);
+    vkUnmapMemory(logicalDevice, stagingBufferMemory);
   }
 
   vkDeviceWaitIdle(logicalDevice);

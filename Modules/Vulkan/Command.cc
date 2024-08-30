@@ -7,6 +7,7 @@ export module Commands;
 import std;
 import Queues;
 import Logging;
+import Descriptors;
 
 export namespace Vulkan {
     VkCommandPool createCommandPool(VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
@@ -18,7 +19,8 @@ export namespace Vulkan {
         VkPipeline graphicsPipeline, 
         VkRenderPass renderPass, 
         std::vector<VkFramebuffer> swapChainFramebuffers, 
-        VkExtent2D swapChainExtent
+        VkExtent2D swapChainExtent,
+        VkBuffer vertexBuffer
     );
 }
 
@@ -51,7 +53,8 @@ namespace Vulkan {
 
     bool recordCommandBuffer(
         VkCommandBuffer commandBuffer, uint32_t imageIndex, VkPipeline graphicsPipeline, 
-        VkRenderPass renderPass, std::vector<VkFramebuffer> swapChainFramebuffers, VkExtent2D swapChainExtent) {
+        VkRenderPass renderPass, std::vector<VkFramebuffer> swapChainFramebuffers, VkExtent2D swapChainExtent,
+        VkBuffer vertexBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -88,6 +91,10 @@ namespace Vulkan {
         scissor.offset = {0, 0};
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        VkBuffer vertexBuffers[] = {vertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 

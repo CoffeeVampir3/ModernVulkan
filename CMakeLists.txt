@@ -25,6 +25,7 @@ add_executable(VulkanApp main.cpp)
 
 file(GLOB_RECURSE MODULE_FILES 
     "${CMAKE_CURRENT_SOURCE_DIR}/Modules/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.cc"
 )
 
 # Add modules using FILE_SET
