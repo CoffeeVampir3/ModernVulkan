@@ -144,10 +144,14 @@ int main() {
     {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
   };
 
-  auto [stagingBuffer, stagingBufferMemory, vertexBuffer, vertexBufferMemory, bufferSize, destroyVertexBuffers] = 
+  auto [vertexBuffer, vertexBufferMemory, bufferSize, destroyVertexBuffers] = 
     Vulkan::createVertexBuffer(physicalDevice, logicalDevice, vertices);
-
   DEFER(destroyVertexBuffers(logicalDevice));
+
+  auto [stagingBuffer, stagingBufferMemory, destroyStagingBuffers] = 
+    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, bufferSize);
+  DEFER(destroyStagingBuffers(logicalDevice));
+  
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
@@ -174,9 +178,10 @@ int main() {
       return -1;
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    vkDeviceWaitIdle(logicalDevice);
+    // Copy our staging buffer to our vertex  buffer.
     Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, stagingBuffer, vertexBuffer, bufferSize);
 
+    // Write to our stagingBuffer
     void* data;
     vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
     std::memcpy(data, vertices.data(), (size_t) bufferSize);
