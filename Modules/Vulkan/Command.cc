@@ -20,7 +20,8 @@ export namespace Vulkan {
         VkRenderPass renderPass, 
         std::vector<VkFramebuffer> swapChainFramebuffers, 
         VkExtent2D swapChainExtent,
-        VkBuffer vertexBuffer
+        VkBuffer vertexBuffer,
+        VkBuffer indexBuffer
     );
 }
 
@@ -54,7 +55,7 @@ namespace Vulkan {
     bool recordCommandBuffer(
         VkCommandBuffer commandBuffer, uint32_t imageIndex, VkPipeline graphicsPipeline, 
         VkRenderPass renderPass, std::vector<VkFramebuffer> swapChainFramebuffers, VkExtent2D swapChainExtent,
-        VkBuffer vertexBuffer) {
+        VkBuffer vertexBuffer, VkBuffer indexBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -95,8 +96,9 @@ namespace Vulkan {
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 

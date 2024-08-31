@@ -135,30 +135,52 @@ int main() {
   DEFER(
     for (auto synchronizer : synchronizers) { 
       synchronizer.destroy(logicalDevice); 
-      }
+    }
   );
 
-  std::vector<Descriptors::Vertex> vertices = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+  const std::vector<Descriptors::Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
   };
 
-  auto [vertexBuffer, vertexBufferMemory, bufferSize, destroyVertexBuffers] = 
-    Vulkan::createVertexBuffer(physicalDevice, logicalDevice, vertices);
-  DEFER(destroyVertexBuffers(logicalDevice));
+  const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+  };
 
-  auto [stagingBuffer, stagingBufferMemory, destroyStagingBuffers] = 
-    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, bufferSize);
-  DEFER(destroyStagingBuffers(logicalDevice));
+  auto [vertexBuffer, vertexBufferMemory, vertexBufferSize] = 
+    Vulkan::createVertexBuffer(physicalDevice, logicalDevice, vertices);
+  DEFER(
+    vkDestroyBuffer(logicalDevice, vertexBuffer, nullptr);
+    vkFreeMemory(logicalDevice, vertexBufferMemory, nullptr)
+  );
+
+  auto [vertexStagingBuffer, vertexStagingBufferMemory] = 
+    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, vertexBufferSize);
+  DEFER(
+    vkDestroyBuffer(logicalDevice, vertexStagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, vertexStagingBufferMemory, nullptr)
+  );
+
+  auto [indexBuffer, indexBufferMemory, indexBufferSize] = 
+    Vulkan::createIndexBuffer(physicalDevice, logicalDevice, indices);
+  DEFER(
+    vkDestroyBuffer(logicalDevice, indexBuffer, nullptr);
+    vkFreeMemory(logicalDevice, indexBufferMemory, nullptr)
+  );
+
+  auto [indexStagingBuffer, indexStagingBufferMemory] = 
+    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, indexBufferSize);
+  DEFER(
+    vkDestroyBuffer(logicalDevice, indexStagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, indexStagingBufferMemory, nullptr)
+  );
+
   
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
-    for (auto& vertex : vertices) {
-        vertex.pos[0] *= 1.001;
-        vertex.pos[1] *= 1.007;
-    }
     glfwPollEvents();
     bool frameSuccessful = Vulkan::drawFrame(
       physicalDevice, 
@@ -170,6 +192,7 @@ int main() {
       commandBuffers[currentFrame],
       synchronizers[currentFrame],
       vertexBuffer,
+      indexBuffer,
       framebufferResized
     );
 
@@ -179,13 +202,18 @@ int main() {
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     // Copy our staging buffer to our vertex  buffer.
-    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, stagingBuffer, vertexBuffer, bufferSize);
+    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, indexStagingBuffer, indexBuffer, indexBufferSize);
+    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
 
     // Write to our stagingBuffer
     void* data;
-    vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-    std::memcpy(data, vertices.data(), (size_t) bufferSize);
-    vkUnmapMemory(logicalDevice, stagingBufferMemory);
+    vkMapMemory(logicalDevice, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &data);
+    std::memcpy(data, vertices.data(), (size_t) vertexBufferSize);
+    vkUnmapMemory(logicalDevice, vertexStagingBufferMemory);
+
+    vkMapMemory(logicalDevice, indexStagingBufferMemory, 0, indexBufferSize, 0, &data);
+    std::memcpy(data, indices.data(), (size_t) indexBufferSize);
+    vkUnmapMemory(logicalDevice, indexStagingBufferMemory);
   }
 
   vkDeviceWaitIdle(logicalDevice);

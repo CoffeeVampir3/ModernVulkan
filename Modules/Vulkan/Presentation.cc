@@ -35,6 +35,7 @@ export namespace Vulkan {
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
         VkBuffer vertexBuffer,
+        VkBuffer indexBuffer,
         bool& framebufferResized
     );
 
@@ -72,6 +73,7 @@ namespace Vulkan {
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
         VkBuffer vertexBuffer,
+        VkBuffer indexBuffer,
         bool& framebufferResized
         ) {
         vkWaitForFences(logicalDevice, 1, &synchronizers.inFlightFence, VK_TRUE, UINT64_MAX);
@@ -102,7 +104,8 @@ namespace Vulkan {
 
         vkResetCommandBuffer(commandBuffer, 0);
         Vulkan::recordCommandBuffer(
-            commandBuffer, imageIndex, graphicsPipeline, renderPass, swapChain.framebuffers, swapChain.extent, vertexBuffer);
+            commandBuffer, imageIndex, graphicsPipeline, renderPass, 
+            swapChain.framebuffers, swapChain.extent, vertexBuffer, indexBuffer);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
