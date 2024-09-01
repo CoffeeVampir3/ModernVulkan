@@ -8,6 +8,7 @@ import std;
 import Queues;
 import Logging;
 import Descriptors;
+import Buffers;
 
 export namespace Vulkan {
     VkCommandPool createCommandPool(VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
@@ -20,8 +21,7 @@ export namespace Vulkan {
         VkRenderPass renderPass, 
         std::vector<VkFramebuffer> swapChainFramebuffers, 
         VkExtent2D swapChainExtent,
-        VkBuffer vertexBuffer,
-        VkBuffer indexBuffer
+        const Vulkan::StagedBuffer& stagedVertexBuffer
     );
 }
 
@@ -55,7 +55,7 @@ namespace Vulkan {
     bool recordCommandBuffer(
         VkCommandBuffer commandBuffer, uint32_t imageIndex, VkPipeline graphicsPipeline, 
         VkRenderPass renderPass, std::vector<VkFramebuffer> swapChainFramebuffers, VkExtent2D swapChainExtent,
-        VkBuffer vertexBuffer, VkBuffer indexBuffer) {
+        const Vulkan::StagedBuffer& stagedVertexBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -93,12 +93,11 @@ namespace Vulkan {
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = {vertexBuffer};
+        VkBuffer vertexBuffers[] = {stagedVertexBuffer.buffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-        vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+        vkCmdBindIndexBuffer(commandBuffer, stagedVertexBuffer.buffer, stagedVertexBuffer.vertexSize, VK_INDEX_TYPE_UINT16);
+        vkCmdDrawIndexed(commandBuffer, stagedVertexBuffer.numIndices, 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 

@@ -149,35 +149,15 @@ int main() {
     0, 1, 2, 2, 3, 0
   };
 
-  auto [vertexBuffer, vertexBufferMemory, vertexBufferSize] = 
-    Vulkan::createVertexBuffer(physicalDevice, logicalDevice, vertices);
-  DEFER(
-    vkDestroyBuffer(logicalDevice, vertexBuffer, nullptr);
-    vkFreeMemory(logicalDevice, vertexBufferMemory, nullptr)
+  auto ivb = Vulkan::StagedBuffer{};
+  ivb.allocate(physicalDevice, logicalDevice, 64 * 1024 * 1024);
+  DEFER( 
+    ivb.unmap();
+    ivb.free();
   );
 
-  auto [vertexStagingBuffer, vertexStagingBufferMemory] = 
-    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, vertexBufferSize);
-  DEFER(
-    vkDestroyBuffer(logicalDevice, vertexStagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, vertexStagingBufferMemory, nullptr)
-  );
+  ivb.map();
 
-  auto [indexBuffer, indexBufferMemory, indexBufferSize] = 
-    Vulkan::createIndexBuffer(physicalDevice, logicalDevice, indices);
-  DEFER(
-    vkDestroyBuffer(logicalDevice, indexBuffer, nullptr);
-    vkFreeMemory(logicalDevice, indexBufferMemory, nullptr)
-  );
-
-  auto [indexStagingBuffer, indexStagingBufferMemory] = 
-    Vulkan::createStagingBuffer(physicalDevice, logicalDevice, indexBufferSize);
-  DEFER(
-    vkDestroyBuffer(logicalDevice, indexStagingBuffer, nullptr);
-    vkFreeMemory(logicalDevice, indexStagingBufferMemory, nullptr)
-  );
-
-  
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
@@ -191,8 +171,7 @@ int main() {
       renderPass, 
       commandBuffers[currentFrame],
       synchronizers[currentFrame],
-      vertexBuffer,
-      indexBuffer,
+      ivb,
       framebufferResized
     );
 
@@ -201,19 +180,9 @@ int main() {
       return -1;
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    // Copy our staging buffer to our vertex  buffer.
-    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, indexStagingBuffer, indexBuffer, indexBufferSize);
-    Vulkan::copyBuffer(logicalDevice, graphicsQueue, commandPool, vertexStagingBuffer, vertexBuffer, vertexBufferSize);
 
-    // Write to our stagingBuffer
-    void* data;
-    vkMapMemory(logicalDevice, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &data);
-    std::memcpy(data, vertices.data(), (size_t) vertexBufferSize);
-    vkUnmapMemory(logicalDevice, vertexStagingBufferMemory);
-
-    vkMapMemory(logicalDevice, indexStagingBufferMemory, 0, indexBufferSize, 0, &data);
-    std::memcpy(data, indices.data(), (size_t) indexBufferSize);
-    vkUnmapMemory(logicalDevice, indexStagingBufferMemory);
+    ivb.put(vertices, indices);
+    ivb.stagingToBuffer(graphicsQueue, commandPool);
   }
 
   vkDeviceWaitIdle(logicalDevice);

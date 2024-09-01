@@ -8,6 +8,7 @@ import std;
 import Commands;
 import SwapChain;
 import Logging;
+import Buffers;
 
 export namespace Vulkan {
 
@@ -34,8 +35,7 @@ export namespace Vulkan {
         VkRenderPass renderPass,
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
-        VkBuffer vertexBuffer,
-        VkBuffer indexBuffer,
+        const Vulkan::StagedBuffer& stagedVertexBuffer,
         bool& framebufferResized
     );
 
@@ -72,8 +72,7 @@ namespace Vulkan {
         VkRenderPass renderPass,
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
-        VkBuffer vertexBuffer,
-        VkBuffer indexBuffer,
+        const Vulkan::StagedBuffer& stagedVertexBuffer,
         bool& framebufferResized
         ) {
         vkWaitForFences(logicalDevice, 1, &synchronizers.inFlightFence, VK_TRUE, UINT64_MAX);
@@ -105,7 +104,7 @@ namespace Vulkan {
         vkResetCommandBuffer(commandBuffer, 0);
         Vulkan::recordCommandBuffer(
             commandBuffer, imageIndex, graphicsPipeline, renderPass, 
-            swapChain.framebuffers, swapChain.extent, vertexBuffer, indexBuffer);
+            swapChain.framebuffers, swapChain.extent, stagedVertexBuffer);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
