@@ -126,7 +126,7 @@ namespace Vulkan {
 
         void map() {
             if(mapped) {
-                Logging::failure("Attempted to map an already mapped vertex buffer.");
+                Logging::failure("Attempted to map an already mapped staged buffer.");
                 return;
             }
             vkMapMemory(allocatedDevice, stagingMemory, 0, bufferSize, 0, &bufferData);
@@ -135,7 +135,7 @@ namespace Vulkan {
 
         void unmap() {
             if(!mapped) {
-                Logging::failure("Attempted to unmap an unmapped buffer.");
+                Logging::failure("Attempted to unmap an unmapped staged buffer.");
                 return;
             }
             vkUnmapMemory(allocatedDevice, stagingMemory);

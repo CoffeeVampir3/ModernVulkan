@@ -21,6 +21,9 @@ const uint32_t HEIGHT = 600;
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
+//64Mb of statically allocated vertex buffer in this case.
+constexpr uint32_t INDEXED_VERTEX_BUFFER_STATIC_ALLOCATION_SIZE = 64 * 1024 * 1024;
+
 const std::vector<const char *> requiredDeviceExtensions = {
   VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -138,25 +141,24 @@ int main() {
     }
   );
 
-  const std::vector<Descriptors::Vertex> vertices = {
+  std::vector<Descriptors::Vertex> vertices = {
     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
   };
 
-  const std::vector<uint16_t> indices = {
+  std::vector<uint16_t> indices = {
     0, 1, 2, 2, 3, 0
   };
 
-  auto ivb = Vulkan::StagedBuffer{};
-  ivb.allocate(physicalDevice, logicalDevice, 64 * 1024 * 1024);
+  auto indexedVertexBuffer = Vulkan::StagedBuffer{};
+  indexedVertexBuffer.allocate(physicalDevice, logicalDevice, INDEXED_VERTEX_BUFFER_STATIC_ALLOCATION_SIZE);
+  indexedVertexBuffer.map();
   DEFER( 
-    ivb.unmap();
-    ivb.free();
+    indexedVertexBuffer.unmap();
+    indexedVertexBuffer.free();
   );
-
-  ivb.map();
 
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
@@ -171,7 +173,7 @@ int main() {
       renderPass, 
       commandBuffers[currentFrame],
       synchronizers[currentFrame],
-      ivb,
+      indexedVertexBuffer,
       framebufferResized
     );
 
@@ -181,8 +183,8 @@ int main() {
     }
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    ivb.put(vertices, indices);
-    ivb.stagingToBuffer(graphicsQueue, commandPool);
+    indexedVertexBuffer.put(vertices, indices);
+    indexedVertexBuffer.stagingToBuffer(graphicsQueue, commandPool);
   }
 
   vkDeviceWaitIdle(logicalDevice);
