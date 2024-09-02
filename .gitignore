@@ -3,6 +3,12 @@
 
 # Ignore gcm.cache folder
 build/
+.cache/
+CMakeCache.txt
+build.ninja
+cmake_install.cmake
+compile_commands.json
+CMakeFiles/
 
 # Ignore the VulkanApp executable
 VulkanApp

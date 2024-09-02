@@ -146,17 +146,6 @@ int main() {
     }
   );
 
-  std::vector<Descriptors::Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-  };
-
-  std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
-  };
-
   auto indexedVertexBuffer = Vulkan::StagedBuffer{};
   indexedVertexBuffer.allocate(physicalDevice, logicalDevice, INDEXED_VERTEX_BUFFER_STATIC_ALLOCATION_SIZE);
   indexedVertexBuffer.map();
@@ -183,7 +172,21 @@ int main() {
     }
   );
 
+  std::vector<Descriptors::Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+  };
+
+  std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0
+  };
+
   uint32_t currentFrame = 0;
+  int frameCount = 0;
+  auto lastTime = std::chrono::high_resolution_clock::now();
+
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -214,6 +217,18 @@ int main() {
 
     indexedVertexBuffer.put(vertices, indices);
     indexedVertexBuffer.stagingToBuffer(graphicsQueue, commandPool);
+
+    frameCount++;
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTime - lastTime).count();
+    
+    if (elapsed >= 1) {
+        double fps = frameCount / elapsed;
+        Logging::info("FPS: {}", fps);
+        
+        frameCount = 0;
+        lastTime = currentTime;
+    }
   }
 
   vkDeviceWaitIdle(logicalDevice);
