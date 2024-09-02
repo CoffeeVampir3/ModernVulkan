@@ -1,6 +1,7 @@
 module;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 export module Buffers;
 
@@ -86,6 +87,67 @@ namespace Vulkan {
         vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
     }
 
+    export struct UniformBuffer {
+        VkBuffer buffer;
+        VkDeviceMemory bufferMemory;
+        VkDescriptorSet descriptorSet;
+        void* bufferData;
+
+        void allocate(VkPhysicalDevice physicalDevice, VkDevice logicalDevice) {
+            VkDeviceSize bufferSize = sizeof(Descriptors::UniformBufferObject);
+            std::tie(buffer, bufferMemory) = createBuffer(
+                physicalDevice, logicalDevice, bufferSize, 
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+            vkMapMemory(logicalDevice, bufferMemory, 0, bufferSize, 0, &bufferData);
+        }
+
+        void free(VkDevice logicalDevice) {
+            vkDestroyBuffer(logicalDevice, buffer, nullptr);
+            vkFreeMemory(logicalDevice, bufferMemory, nullptr);
+        }
+
+        void bindDescriptor(VkDevice logicalDevice, VkDescriptorSet descriptorSet) {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(Descriptors::UniformBufferObject);
+            this->descriptorSet = descriptorSet;
+
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = this->descriptorSet;
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            descriptorWrite.pImageInfo = nullptr; // Optional
+            descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+            vkUpdateDescriptorSets(logicalDevice, 1, &descriptorWrite, 0, nullptr);
+        }
+
+        void updateUniformBuffer(VkExtent2D swapChainExtent) {
+            static auto startTime = std::chrono::high_resolution_clock::now();
+
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+            Descriptors::UniformBufferObject ubo{};
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+
+            ubo.proj[1][1] *= -1;
+
+            std::memcpy(bufferData, &ubo, sizeof(ubo));
+        }
+    };
+
     export struct StagedBuffer {
         VkBuffer buffer;
         VkBuffer staging;
@@ -152,7 +214,7 @@ namespace Vulkan {
             numIndices = indices.size();
 
             std::memcpy(bufferData, vertices.data(), (size_t) vertexSize);
-            void* indexDest = std::bit_cast<std::byte*>(bufferData) + vertexSize;
+            void* indexDest = reinterpret_cast<std::byte*>(bufferData) + vertexSize;
             std::memcpy(indexDest, indices.data(),  (size_t) indexSize);
         }
 
@@ -160,35 +222,4 @@ namespace Vulkan {
             Vulkan::copyBuffer(allocatedDevice, commandQueue, commandPool, staging, buffer, bufferSize);
         }
     };
-
-    export std::tuple<VkBuffer, VkDeviceMemory, VkDeviceSize> createVertexBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, std::vector<Descriptors::Vertex> vertices) {
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-        auto [vertexBuffer, vertexBufferMemory] = createBuffer(
-            physicalDevice, logicalDevice, bufferSize, 
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        );
-
-        return std::make_tuple(vertexBuffer, vertexBufferMemory, bufferSize);
-    }
-
-    export std::tuple<VkBuffer, VkDeviceMemory, VkDeviceSize> createIndexBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, std::vector<uint16_t> indices) {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-        auto [indexBuffer, indexBufferMemory] = createBuffer(
-            physicalDevice, logicalDevice, bufferSize, 
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        );
-        return std::make_tuple(indexBuffer, indexBufferMemory, bufferSize);
-    }
-
-    export std::tuple<VkBuffer, VkDeviceMemory> createStagingBuffer(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkDeviceSize bufferSize) {
-        auto [stagingBuffer, stagingBufferMemory] = createBuffer(
-            physicalDevice, logicalDevice, bufferSize, 
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        );
-
-        return std::make_tuple(stagingBuffer, stagingBufferMemory);
-    }
 }

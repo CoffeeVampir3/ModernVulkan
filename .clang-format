@@ -13,4 +13,3 @@ SpaceBeforeAssignmentOperators: true
 AlignEscapedNewlines: Left
 ColumnLimit: 0
 KeepEmptyLinesAtTheStartOfBlocks: true
-MaxEmptyLinesToKeep: 2

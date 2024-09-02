@@ -103,7 +103,12 @@ int main() {
     return -1;
   }
 
-  auto [graphicsPipelineLayout, graphicsPipeline] = Vulkan::createGraphicsPipeline(logicalDevice, renderPass);
+  auto descriptorSetLayout = Descriptors::createPipelineDescriptorLayout(logicalDevice);
+  DEFER(
+    vkDestroyDescriptorSetLayout(logicalDevice, descriptorSetLayout, nullptr);
+  );
+
+  auto [graphicsPipelineLayout, graphicsPipeline] = Vulkan::createGraphicsPipeline(logicalDevice, renderPass, descriptorSetLayout);
   DEFER(
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, graphicsPipelineLayout, nullptr)
@@ -160,20 +165,44 @@ int main() {
     indexedVertexBuffer.free();
   );
 
+  auto descriptorPool = Descriptors::createDescriptorPool(logicalDevice, MAX_FRAMES_IN_FLIGHT);
+  DEFER(
+    vkDestroyDescriptorPool(logicalDevice, descriptorPool, nullptr);
+  );
+
+  auto descriptorSets = Descriptors::createDescriptorSets(logicalDevice, descriptorSetLayout, descriptorPool, MAX_FRAMES_IN_FLIGHT);
+
+  std::array<Vulkan::UniformBuffer, MAX_FRAMES_IN_FLIGHT> uniformBuffers;
+  for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    uniformBuffers[i].allocate(physicalDevice, logicalDevice);
+    uniformBuffers[i].bindDescriptor(logicalDevice, descriptorSets[i]);
+  }
+  DEFER(
+    for(int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+      uniformBuffers[i].free(logicalDevice);
+    }
+  );
+
   uint32_t currentFrame = 0;
   // PRIMARY LOOP
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+
+    Vulkan::UniformBuffer currentUniformBuffer = uniformBuffers[currentFrame];
+    currentUniformBuffer.updateUniformBuffer(swapChain.extent);
+
     bool frameSuccessful = Vulkan::drawFrame(
       physicalDevice, 
       logicalDevice, 
       graphicsPipeline, 
+      graphicsPipelineLayout,
       graphicsQueue,
       swapChain,
       renderPass, 
       commandBuffers[currentFrame],
       synchronizers[currentFrame],
       indexedVertexBuffer,
+      currentUniformBuffer,
       framebufferResized
     );
 

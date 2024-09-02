@@ -30,12 +30,14 @@ export namespace Vulkan {
         VkPhysicalDevice physicalDevice,
         VkDevice logicalDevice,
         VkPipeline graphicsPipeline, 
+        VkPipelineLayout pipelineLayout,
         VkQueue graphicsQueue, 
         RenderingSwapChain& swapChain,
         VkRenderPass renderPass,
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
         const Vulkan::StagedBuffer& stagedVertexBuffer,
+        Vulkan::UniformBuffer& uniformBuffer,
         bool& framebufferResized
     );
 
@@ -67,12 +69,14 @@ namespace Vulkan {
         VkPhysicalDevice physicalDevice,
         VkDevice logicalDevice,
         VkPipeline graphicsPipeline, 
+        VkPipelineLayout pipelineLayout,
         VkQueue graphicsQueue,
         RenderingSwapChain& swapChain,
         VkRenderPass renderPass,
         VkCommandBuffer commandBuffer, 
         RenderSync synchronizers,
         const Vulkan::StagedBuffer& stagedVertexBuffer,
+        Vulkan::UniformBuffer& uniformBuffer,
         bool& framebufferResized
         ) {
         vkWaitForFences(logicalDevice, 1, &synchronizers.inFlightFence, VK_TRUE, UINT64_MAX);
@@ -103,8 +107,8 @@ namespace Vulkan {
 
         vkResetCommandBuffer(commandBuffer, 0);
         Vulkan::recordCommandBuffer(
-            commandBuffer, imageIndex, graphicsPipeline, renderPass, 
-            swapChain.framebuffers, swapChain.extent, stagedVertexBuffer);
+            commandBuffer, imageIndex, graphicsPipeline, pipelineLayout, renderPass, 
+            swapChain.framebuffers, swapChain.extent, stagedVertexBuffer, uniformBuffer);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

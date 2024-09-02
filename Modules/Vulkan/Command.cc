@@ -18,10 +18,12 @@ export namespace Vulkan {
         VkCommandBuffer commandBuffer, 
         uint32_t imageIndex, 
         VkPipeline graphicsPipeline, 
+        VkPipelineLayout pipelineLayout,
         VkRenderPass renderPass, 
         std::vector<VkFramebuffer> swapChainFramebuffers, 
         VkExtent2D swapChainExtent,
-        const Vulkan::StagedBuffer& stagedVertexBuffer
+        const Vulkan::StagedBuffer& stagedVertexBuffer,
+        Vulkan::UniformBuffer& uniformBuffer
     );
 }
 
@@ -53,9 +55,9 @@ namespace Vulkan {
     }
 
     bool recordCommandBuffer(
-        VkCommandBuffer commandBuffer, uint32_t imageIndex, VkPipeline graphicsPipeline, 
+        VkCommandBuffer commandBuffer, uint32_t imageIndex, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
         VkRenderPass renderPass, std::vector<VkFramebuffer> swapChainFramebuffers, VkExtent2D swapChainExtent,
-        const Vulkan::StagedBuffer& stagedVertexBuffer) {
+        const Vulkan::StagedBuffer& stagedVertexBuffer, Vulkan::UniformBuffer& uniformBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -97,6 +99,7 @@ namespace Vulkan {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, stagedVertexBuffer.buffer, stagedVertexBuffer.vertexSize, VK_INDEX_TYPE_UINT16);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &uniformBuffer.descriptorSet, 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, stagedVertexBuffer.numIndices, 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);

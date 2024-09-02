@@ -9,3 +9,7 @@ VulkanApp
 
 # Ignore the log file.
 last_run_log.txt
+
+test.cpp
+
+app
