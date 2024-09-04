@@ -67,7 +67,9 @@ int main() {
   }
 
   auto surface = Vulkan::createSurface(instance, window);
-  DEFER(vkDestroySurfaceKHR(instance, surface, nullptr));
+  DEFER(
+    vkDestroySurfaceKHR(instance, surface, nullptr)
+  );
   if (surface == VK_NULL_HANDLE) {
     Logging::failure("Could not create a window surface.");
     return -1;
@@ -80,7 +82,9 @@ int main() {
   }
 
   auto [logicalDevice, graphicsQueue] = Vulkan::createLogicalDevice(physicalDevice, requiredDeviceExtensions);
-  DEFER(vkDestroyDevice(logicalDevice, nullptr));
+  DEFER(
+    vkDestroyDevice(logicalDevice, nullptr)
+  );
   if (logicalDevice == VK_NULL_HANDLE || graphicsQueue == VK_NULL_HANDLE) {
     Logging::failure("Could not create a logical device.");
     return -1;
@@ -90,14 +94,18 @@ int main() {
   swapChain.build(physicalDevice, logicalDevice, surface, window);
 
   auto renderPass = Vulkan::createRenderPass(logicalDevice, swapChain.format);
-  DEFER(vkDestroyRenderPass(logicalDevice, renderPass, nullptr));
+  DEFER(
+    vkDestroyRenderPass(logicalDevice, renderPass, nullptr)
+  );
   if (renderPass == VK_NULL_HANDLE) {
     Logging::failure("Failed to create graphics pipeline.");
     return -1;
   }
 
   swapChain.populateFramebuffers(logicalDevice, renderPass);
-  DEFER(swapChain.destroy(logicalDevice));
+  DEFER(
+    swapChain.destroy(logicalDevice)
+  );
   if (!swapChain.valid()) {
     Logging::failure("Failed to create framebuffers.");
     return -1;
@@ -120,7 +128,9 @@ int main() {
   }
 
   auto commandPool = Vulkan::createCommandPool(physicalDevice, logicalDevice);
-  DEFER(vkDestroyCommandPool(logicalDevice, commandPool, nullptr));
+  DEFER(
+    vkDestroyCommandPool(logicalDevice, commandPool, nullptr)
+  );
   if (commandPool == VK_NULL_HANDLE) {
     Logging::failure("Failed to create a command pool.");
     return -1;

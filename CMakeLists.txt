@@ -14,7 +14,6 @@ project("VulkanApp"
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 
-
 # Set language version used
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
@@ -40,6 +39,7 @@ target_sources(VulkanApp
 target_include_directories(VulkanApp
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/3P
 )
 
 target_link_libraries(VulkanApp
@@ -53,3 +53,8 @@ target_link_libraries(VulkanApp
     Xrandr
     Xi
 )
+
+get_property(TARGETS DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+foreach(TARGET ${TARGETS})
+    target_compile_options(${TARGET} PRIVATE -fno-exceptions)
+endforeach()
